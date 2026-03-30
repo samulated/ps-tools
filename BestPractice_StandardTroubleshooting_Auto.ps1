@@ -245,12 +245,61 @@ function Find-BPRegistryKeySubkey {
 }
 #endregion
 
+function Get-DotNET4p8Installed {
+    $release = Get-ItemPropertyValue -LiteralPath "HKLM:SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full" -Name Release
+    switch ($release) {
+        { $_ -ge 533320 } { $version = '4.8.1 or later'; break }
+        { $_ -ge 528040 } { $version = '4.8'; break }
+        { $_ -ge 461808 } { $version = '4.7.2'; break }
+        { $_ -ge 461308 } { $version = '4.7.1'; break }
+        { $_ -ge 460798 } { $version = '4.7'; break }
+        { $_ -ge 394802 } { $version = '4.6.2'; break }
+        { $_ -ge 394254 } { $version = '4.6.1'; break }
+        { $_ -ge 393295 } { $version = '4.6'; break }
+        { $_ -ge 379893 } { $version = '4.5.2'; break }
+        { $_ -ge 378675 } { $version = '4.5.1'; break }
+        { $_ -ge 378389 } { $version = '4.5'; break }
+        default { $version = $null; break }
+    }
+    if ($version) {
+        if ($version -eq '4.8') {
+            Write-LogLine "Confirmed that .NET Framework 4.8 is installed."
+        }
+        else {
+            Write-LogLine ".NET Framework 4.8 is not installed, detected $version instead!" -Level ERROR
+        }
+    }
+    else {
+        Write-LogLine ".NET Framework 4.5 or later is not detected." -Level ERROR
+    }
+}
+
+function Get-DotNET3p5Installed {
+    $install = Get-ItemPropertyValue -LiteralPath "HKLM:SOFTWARE\Microsoft\NET Framework Setup\NDP\v3.5" -Name Install
+    
+    if ($install -eq 1)
+    {
+        Write-LogLine ".NET Framework 3.5 was detected."
+    }
+    else
+    {
+        Write-LogLine ".NET Framework 3.5 was not detected!" -Level ERROR
+    }
+}
+
+function Get-BPUACLevel {
+    $prop = Get-ItemProperty -Path HKLM:\Software\Microsoft\Windows\CurrentVersion\Policies\System
+    $level = $prop.ConsentPromptBehaviorUser
+    
+    Write-LogLine "Current UAC level is $level."
+}
+
 #endregion
 
 #region Main
 # The main functional part of this script
 
-
+<#
 if (Test-BPIsAdmin) {
     Write-LogLine "Confirmed script is running with Admin permissions."
     Write-LogLine "Beginning step-by-step instructions."
@@ -348,49 +397,54 @@ if (Test-BPIsAdmin) {
             Write-BlankLine
         }
     }
-    Write-BlankLine
     Write-LogLine "END STEP 7"
+    Write-BlankLine
 
     # STEP 8 - Check/Enable Microsoft .NET Framework
-
+    Write-LogLine "STEP 8 - Check that .NET Framework 3.5 & 4.8 are installed"
+    Get-DotNET3p5Installed
+    Get-DotNET4p8Installed
+    Write-LogLine "END STEP 8"
+    Write-BlankLine
 
     # STEP 9 - Check UAC level
-
+    Write-LogLine "STEP 9 - Confirm UAC level is 2 or 3"
+    Get-BPUACLevel
+    Write-LogLine "END STEP 9"
+    Write-BlankLine
 
     # STEP 10 (OPTIONAL) - AFTER HOURS ONLY
     # Re-register TX Control Utility - https://kb.bpsoftware.net/support/TXutility.htm
+    Write-LogLine "STEP 10 - Optional, run after hours only!"
+    # TODO:Implement re-register document viewer
+    Write-BlankLine
 
     # STEP 11 (OPTIONAL) - AFTER HOURS ONLY
     # Re-register the Document Viewer - https://kb.bpsoftware.net/support/ResolveDocumentViewer.htm
+    Write-LogLine "STEP 11 - Optional, run after hours only! Re-register Document Viewer"
+    # TODO:Implement re-register document viewer
+    Write-BlankLine
 
     # STEP 12 - Run RegisterAll.bat
-
-
+    Write-LogLine "STEP 12 - Run RegisterAll.bat"
+    Start-Process -FilePath "C:\Program Files\Best Practice Software\BPS\BPSupport\RegsiterAll.bat" -Wait
+    Write-LogLine "END STEP 12"
+    Write-BlankLine
     Write-BlankLine
     Write-LogLine "Standard troubleshooting instructions have been completed."
 }
 else {
     Write-LogLine "Script not running as Administrator, unable to proceed." -Level ERROR
 }
-
-
-<#
-Write-LogLine "REG TEST - Update test registry key's perms"
-Write-BlankLine
-$keys = Find-BPRegistryKeySubkey "HKCU:\Software\_Test" "Apple"
-if ($keys.Count -ne 0) {
-    foreach ($key in $keys) {
-        $k = $key.PSPath
-        Write-LogLine "Checking $k"
-        Write-BlankLine
-    }
-}
-else {
-    Write-LogLine "No keys found" -Level ERROR
-}
-Write-LogLine "END REG TEST"
-Write-BlankLine
 #>
+
+
+Write-LogLine "CHECK TEST - Running the checks"
+Write-BlankLine
+Get-DotNET3p5Installed
+Get-DotNET4p8Installed
+Get-BPUACLevel
+Write-BlankLine
 
 Write-Output $LogBuilder.ToString()
 
