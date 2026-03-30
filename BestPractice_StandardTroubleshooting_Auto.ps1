@@ -209,6 +209,40 @@ function Update-BPRegistryKey {
 
     Write-LogLine "Finished check for: $RegistryPath"
 }
+
+function Remove-BPRegistryKey {
+    param (
+        [string[]]$RegistryPath
+    )
+
+    Write-LogLine "Starting check for: $RegistryPath"
+    if (Get-BPRegistryKeyExists($RegistryPath))
+    {
+        Remove-Item -Path "$RegistryPath" -Recurse
+        Write-LogLine "Removed key successfully" -Level ACTION
+    }
+    else {
+        Write-LogLine "Key does not exist." -Level ERROR
+    }
+}
+
+# Search under path for keys matching the search term
+function Find-BPRegistryKeySubkey {
+    param (
+        [string[]]$RegistryPath,
+        [string[]]$SearchTerm
+    )
+
+    $keys = Get-ChildItem -Path $RegistryPath -Recurse | Where-Object { $_.Name -like "*$SearchTerm*" }
+    if ($keys.Count -eq 0) {
+        Write-LogLine "No '$SearchTerm' subkeys exist below '$RegistryPath'." -Level ERROR
+        return $keys
+    }
+
+    $c = $keys.Count
+    Write-LogLine "Found $c subkeys matching the search term '$SearchTerm'."
+    return $keys
+}
 #endregion
 
 #endregion
@@ -216,7 +250,7 @@ function Update-BPRegistryKey {
 #region Main
 # The main functional part of this script
 
-<#
+
 if (Test-BPIsAdmin) {
     Write-LogLine "Confirmed script is running with Admin permissions."
     Write-LogLine "Beginning step-by-step instructions."
@@ -233,7 +267,7 @@ if (Test-BPIsAdmin) {
     Write-LogLine "STEP 2 - Change Temp folder permissions for all users"
     Write-BlankLine
     foreach ($path in Get-BPAllUserPaths) {
-        Write-LogLine "Updating $path"
+        Write-LogLine "Updating temp folder perms for $path"
         $p = $path + "\AppData\Local\Temp"
         Update-BPFolder $p
         Write-BlankLine
@@ -245,7 +279,7 @@ if (Test-BPIsAdmin) {
     Write-LogLine "STEP 3 - Change Temp folder contents for all users"
     Write-BlankLine
     foreach ($path in Get-BPAllUserPaths) {
-        Write-LogLine "Clearing $path"
+        Write-LogLine "Clearing temp folder for $path"
         $p = $path + "\AppData\Local\Temp"
         Clear-BPFolderContents $p
         Write-BlankLine
@@ -272,7 +306,7 @@ if (Test-BPIsAdmin) {
     Write-LogLine "STEP 6 - Delete BPS folder in Virtual Store"
     Write-BlankLine
     foreach ($path in Get-BPAllUserPaths) {
-        Write-LogLine "Clearing $path"
+        Write-LogLine "Deleting BP folder from virtual store of $path"
         $p = $path + "\AppData\Local\VirtualStore\Program Files\Best Practice Software"
         Remove-BPFolder $p
         Write-BlankLine
@@ -281,10 +315,47 @@ if (Test-BPIsAdmin) {
     Write-BlankLine
 
     # STEP 7 - Delete registry keys under virtualstore
+    Write-LogLine "STEP 7 - Search for and delete Best Practice subkeys under the virtualstore registry keys"
+    Write-BlankLine
+
+    Write-LogLine "Searching under Local Machine (HKLM)"
+    $keys = Find-BPRegistryKeySubKey("HKLM:\Software", "virtualstore")
+    if ($keys.Count -ne 0) {
+        foreach($key in $keys) {
+            $subkeys = Find-BPRegistryKeySubkey($k.PSPath, "Best Practice")
+            if ($subkeys.Count -ne 0) {
+                foreach ($skey in $subkeys) {
+                    Remove-BPFolder $skey.PSPath
+                    Write-BlankLine
+                }
+            }
+            Write-BlankLine
+        }
+    }
+    Write-BlankLine
+
+    Write-LogLine "Searching under Current User (HKCU)"
+    $keys = Find-BPRegistryKeySubKey("HKCU:\Software", "virtualstore")
+    if ($keys.Count -ne 0) {
+        foreach($key in $keys) {
+            $subkeys = Find-BPRegistryKeySubkey($k.PSPath, "Best Practice")
+            if ($subkeys.Count -ne 0) {
+                foreach ($skey in $subkeys) {
+                    Remove-BPRegistryKey $skey.PSPath
+                    Write-BlankLine
+                }
+            }
+            Write-BlankLine
+        }
+    }
+    Write-BlankLine
+    Write-LogLine "END STEP 7"
 
     # STEP 8 - Check/Enable Microsoft .NET Framework
 
+
     # STEP 9 - Check UAC level
+
 
     # STEP 10 (OPTIONAL) - AFTER HOURS ONLY
     # Re-register TX Control Utility - https://kb.bpsoftware.net/support/TXutility.htm
@@ -300,35 +371,26 @@ if (Test-BPIsAdmin) {
 }
 else {
     Write-LogLine "Script not running as Administrator, unable to proceed." -Level ERROR
-}#>
-
+}
 
 
 <#
-$path = "C:\Test\Apple"
-Update-BPFolder $path
-Write-BlankLine
-
-$path = "C:\Test\Orange"
-Update-BPFolder $path
-Write-BlankLine
-
-$path = "C:\Test\Pineapple"
-Update-BPFolder $path
-Write-BlankLine
-
-$path = "C:\Test\Apple"
-Remove-BPFolder $path
-Write-BlankLine
-
-Write-Output $LogBuilder.ToString()
-#>
-
 Write-LogLine "REG TEST - Update test registry key's perms"
 Write-BlankLine
-Update-BPRegistryKey "HKCU:\Software\_Test"
+$keys = Find-BPRegistryKeySubkey "HKCU:\Software\_Test" "Apple"
+if ($keys.Count -ne 0) {
+    foreach ($key in $keys) {
+        $k = $key.PSPath
+        Write-LogLine "Checking $k"
+        Write-BlankLine
+    }
+}
+else {
+    Write-LogLine "No keys found" -Level ERROR
+}
 Write-LogLine "END REG TEST"
 Write-BlankLine
+#>
 
 Write-Output $LogBuilder.ToString()
 
