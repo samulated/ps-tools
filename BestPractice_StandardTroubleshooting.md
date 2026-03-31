@@ -1,9 +1,6 @@
 STEP 0.1
 Check for Administrator elevation, fail early if not present
 
-STEP 0.2
-Check whether running on AVD, these steps are for the workstation, not for the BP server
-
 STEP 1
 Change Best Practice folder permissions
 1.1 - C:\Program Files\Best Practice Software

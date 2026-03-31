@@ -299,7 +299,6 @@ function Get-BPUACLevel {
 #region Main
 # The main functional part of this script
 
-<#
 if (Test-BPIsAdmin) {
     Write-LogLine "Confirmed script is running with Admin permissions."
     Write-LogLine "Beginning step-by-step instructions."
@@ -438,13 +437,14 @@ else {
 }
 #>
 
-
+<#
 Write-LogLine "CHECK TEST - Running the checks"
 Write-BlankLine
 Get-DotNET3p5Installed
 Get-DotNET4p8Installed
 Get-BPUACLevel
 Write-BlankLine
+#>
 
 Write-Output $LogBuilder.ToString()
 
